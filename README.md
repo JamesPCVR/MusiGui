@@ -1,6 +1,6 @@
 # What is MusiGui?
 
-Pronounced `myou-zi-goo-ee`. It is GUI wrapper around the legendary [youtube-dl](https://github.com/ytdl-org/youtube-dl) and AI upscalers: RealSR; Waifu2x; and SRMD.
+Pronounced `myou-zi-goo-ee`. It is a GUI wrapper around the legendary [youtube-dl](https://github.com/ytdl-org/youtube-dl) and AI upscalers: RealSR; Waifu2x; and SRMD.
 
 If you ever get stuck or need help; press the handy-dandy `help` button in the program!
 
@@ -12,14 +12,22 @@ You can easily install `youtube_dl`, `eyed3` and `cv2` using [pip](https://pip.p
 
 ```bash
 pip install youtube-dl
+```
+```bash
 pip install eyed3
+```
+```bash
 pip install opencv-python
 ```
 
 Windows users may have to add `py -m` to the beginning of each command:
 ```bash
 py -m pip install youtube-dl
+```
+```bash
 py -m pip install eyed3
+```
+```bash
 py -m pip install opencv-python
 ```
 
@@ -35,6 +43,8 @@ py -m pip install opencv-python
 - Add URLs to the text box in the bottom left, they are seperated with a newline (\<enter>). The URLs can point to single streams or playlists/albums (whole playlists will be downloaded). The URLs can be from any website (e.g. youtube, soundcloud, bandcamp...) so long as it is [supported by youtube-dl](https://github.com/ytdl-org/youtube-dl/blob/master/docs/supportedsites.md).
 - Once you've added all the URLs you want, hit the download button in the bottom right to download the files one-by-one. The program will also download the cover art for each item.
 - Cover art will be upscaled by the selected AI model if it is smaller than the target image size.
+
+![GUI preview](img/img.jpg)
 
 # Supported AI models
 
