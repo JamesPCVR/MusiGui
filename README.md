@@ -2,9 +2,13 @@
 
 Pronounced `myou-zi-goo-ee`. It is a GUI wrapper around the legendary [youtube-dl](https://github.com/ytdl-org/youtube-dl) and AI upscalers: RealSR; Waifu2x; and SRMD.
 
-If you ever get stuck or need help; press the handy-dandy `help` button in the program!
+The windows freezes during a download, this application is only single-threaded. If your OS says it's "not responding" you probably just need to wait for the download to finish.
+
+If you ever get stuck or need help; press the handy-dandy `help` button in the program! There are also some tooltips (hover for 1 second).
 
 # Dependencies
+
+### Required
 
 Dependencies `tkinter`, `json`, `ctypes`, `os`, `time`, and `subprocess` are included in the [python standard library](https://docs.python.org/3/library/index.html).
 
@@ -31,6 +35,12 @@ py -m pip install eyed3
 py -m pip install opencv-python
 ```
 
+`youtube-dl` requires ffmpeg, follow [this guide](https://phoenixnap.com/kb/ffmpeg-windows) to install it if you haven't already.
+
+### Optional
+
+I would also reccommend downloading [mp3tag](https://www.mp3tag.de/en/download.html) it is really handy for correcting any mistakes the program makes.
+
 # Setup
 
 ### First use
@@ -44,7 +54,7 @@ py -m pip install opencv-python
 - Once you've added all the URLs you want, hit the download button in the bottom right to download the files one-by-one. The program will also download the cover art for each item.
 - Cover art will be upscaled by the selected AI model if it is smaller than the target image size.
 
-![GUI preview](img/img.jpg)
+![GUI preview](img/img2.jpg)
 
 # Supported AI models
 
@@ -55,6 +65,12 @@ Be sure to download at least one of these and put it in a folder that the GUI ca
 | [realsr-ncnn-vulkan](https://github.com/nihui/realsr-ncnn-vulkan) | [MIT](https://choosealicense.com/licenses/mit/) |
 | [waifu2x-ncnn-vulkan](https://github.com/nihui/waifu2x-ncnn-vulkan) | [MIT](https://choosealicense.com/licenses/mit/) |
 | [srmd-ncnn-vulkan](https://github.com/nihui/srmd-ncnn-vulkan) | [MIT](https://choosealicense.com/licenses/mit/) |
+
+# Credits
+
+[supported models](#supported-ai-models) - nihui and many others
+
+[tooltip.py](tooltip.py) - vegaseat, Victor Zaccardo, Alberto Vanessa & Erik Bethke
 
 # License
 

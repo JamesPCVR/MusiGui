@@ -2,37 +2,28 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from tkinter import ttk
+from tkinter.font import Font
 import youtube_dl
 import json
 import os
 import formatting
+import tooltip
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 AUDIOQUALITYOPTIONS = ('320 Kbps', '240 Kbps', '160 Kbps', '128 Kbps', '96 Kbps')
-IMAGESIZEOPTIONS    = (
-    '3000x3000',
-    '2560x2560',
-    '2048x2048',
-    '1920x1920',
-    '1600x1600',
-    '1200x1200',
-    '1024x1024',
-    '680x680',
-    '512x512',
-    '500x500'
-)
+IMAGESIZEOPTIONS    = (256, 8192)
 ATTACHIMAGEOPTIONS  = ('youtube-dl', 'Manual select')
-UPSCALEROPTIONS     = ('RealSR', 'Waifu2x', 'SRMD')
+UPSCALEROPTIONS     = ('RealSR', 'Waifu2x', 'SRMD', 'None')
 DOWNSCALEROPTIONS   = ('Lanczos 8x8', 'Bicubic 4x4', 'Area', 'Bilinear', 'Nearest-neighbour')
 
 DATAJSON = 'data.json'
 JSONDEFAULT = {
-    'audio_quality':        AUDIOQUALITYOPTIONS[1],
-    'target_image':         IMAGESIZEOPTIONS[6],
+    'audio_quality':        AUDIOQUALITYOPTIONS[0],
+    'target_image':         1024,
     'attach_single':        ATTACHIMAGEOPTIONS[0],
     'attach_album':         ATTACHIMAGEOPTIONS[1],
-    'upscaler':             UPSCALEROPTIONS[0],
+    'upscaler':             UPSCALEROPTIONS[3],
     'downscaler':           DOWNSCALEROPTIONS[0],
     'overwrite':            True,
     'download_directory':   '',
@@ -91,7 +82,7 @@ class DownloadUI:
 
         parent.wm_protocol("WM_DELETE_WINDOW", self.exit)
     
-    def save_data(self):
+    def save_data(self) -> None:
         savedata = {
             'audio_quality':        self.options.audioqualityvariable.get(),
             'target_image':         self.options.imagesizevariable.get(),
@@ -112,7 +103,7 @@ class DownloadUI:
         self.mainframe = None
         self.parent.destroy()
     
-    def get_json_data(self):
+    def get_json_data(self) -> dict:
         try:
             data = json.load(open(DATAJSON, 'r'))
             # DATAJSON exists
@@ -150,11 +141,12 @@ class DownloadUI:
 
     def download_songs(self) -> None:
         # check for errors
-        modeldirectory = self.directories.upscalerdirectoryvariable.get() + formatting.UPSCALERS[self.options.upscalervariable.get()]
-        if not os.path.exists(modeldirectory):
-            action = messagebox.askyesno(title='Could not find upscaler', message=f'Could not find {self.options.upscalervariable.get()} at\n{modeldirectory}\nContinue anyway?')
-            if not action:
-                return
+        if self.options.upscalervariable.get() != 'None': # upscaling disabled, no need to check for models
+            modeldirectory = self.directories.upscalerdirectoryvariable.get() + formatting.UPSCALERS[self.options.upscalervariable.get()]
+            if not os.path.exists(modeldirectory):
+                action = messagebox.askyesno(title='Could not find upscaler', message=f'Could not find {self.options.upscalervariable.get()} at\n{modeldirectory}\nContinue anyway?')
+                if not action:
+                    return
 
         # disable widgets
         self.downloadbutton.configure(state='disabled')
@@ -166,30 +158,31 @@ class DownloadUI:
         self.save_data()
         urls = self.main.linkstext.get('1.0', tk.END).split('\n')[:-1]
 
+        cleanedurls = [i for i in urls if i not in IGNOREDURLS]
+        self.set_progress_bar(0, len(cleanedurls))
+
         # initialise yt-dl
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': self.directories.downloaddirectoryvariable.get() + '/%(title)s.%(ext)s',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': self.options.audioqualityvariable.get().removesuffix(' Kbps')
+                'preferredcodec': 'mp3'
+                #'preferredquality': self.options.audioqualityvariable.get().removesuffix(' Kbps') + 'K' # ffmpeg issues
             }],
             'writethumbnail': True
         }
-        self.yt_song = youtube_dl.YoutubeDL(ydl_opts)
-        self.yt_song.__enter__()
-        self.yt_song.add_progress_hook(self.yt_progress)
+        self.ydl = youtube_dl.YoutubeDL(ydl_opts)
+        self.ydl.add_progress_hook(self.yt_progress)
 
         # download each item in turn
         try:
-            for i, url in enumerate(urls):
-                if not url in IGNOREDURLS:
-                    self.download(self.yt_song, url)
-                
-                self.progresslabelvariable.set(f'{i+1}/{len(urls)}')
-                self.progressbarvariable.set((i+1)/len(urls)*100)
+            for i, url in enumerate(cleanedurls):
+                self.download(self.ydl, url)
+                self.set_progress_bar(i+1, len(cleanedurls))
+
             messagebox.showinfo(title=None, message='Download(s) finished')
+        
         except youtube_dl.DownloadError as e:
             messagebox.showerror(title=None, message=str(e).split('.')[0])
         
@@ -198,18 +191,23 @@ class DownloadUI:
         for widget in self.options.widgets + self.directories.widgets:
             widget.configure(state='normal')
         self.mainframe.update()
+    
+    def set_progress_bar(self, position, total) -> None:
+        self.progresslabelvariable.set(f'{position}/{total}')
+        self.progressbarvariable.set(position/total*100)
 
 class Main(ttk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent) -> None:
         super().__init__(parent)
         self.parent = parent
         self.pad = 5
         self.create_widgets()
     
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         # build widgets
         linkslabel = ttk.Label(self, text='Seperate URLs should go on their own line\nIt\'s fine to mix albums/playlists/EPs with singles\nURLs don\'t have to come from the same source')
         helpbutton = ttk.Button(self, text='Help', command=self.show_help)
+        tooltip.Tooltip(helpbutton, "Need help? I don't blame you")
         self.linkstext = tk.Text(self)
 
         # configure
@@ -222,12 +220,12 @@ class Main(ttk.Frame):
         helpbutton.grid     (row=0, column=1, sticky=tk.EW, **kwargs)
         self.linkstext.grid (row=1, column=0, sticky=tk.NSEW, **kwargs, columnspan=2)
     
-    def show_help(self):
+    def show_help(self) -> None:
         with open('help.txt', 'rb') as f:
             messagebox.showinfo(title='You cried for help!', message=f.read())
 
 class Directories(ttk.Frame):
-    def __init__(self, parent, jsondata):
+    def __init__(self, parent, jsondata) -> None:
         super().__init__(parent)
         self.parent = parent
         self.pad = 5
@@ -237,7 +235,7 @@ class Directories(ttk.Frame):
 
         self.widgets = self.create_widgets()
 
-    def create_widgets(self):
+    def create_widgets(self) -> tuple:
         # create widgets
         downloaddirectorylabel = ttk.Label(self, text='Download directory')
         downloaddirectoryentry = ttk.Entry(
@@ -273,12 +271,12 @@ class Directories(ttk.Frame):
             upscalerdirectorybutton
         )
 
-    def pick_directory(self, var, type) -> str:
+    def pick_directory(self, var: tk.StringVar, type: str) -> str:
         titles = ['Select a download directory', 'Select an upscaler directory']
         var.set(filedialog.askdirectory(title=titles[type]))
 
 class Options(ttk.Frame):
-    def __init__(self, parent, jsondata):
+    def __init__(self, parent: ttk.Frame, jsondata: dict) -> None:
         super().__init__(parent)
         self.parent = parent
         self.pad = 5
@@ -293,7 +291,7 @@ class Options(ttk.Frame):
 
         self.widgets = self.create_widgets()
 
-    def create_widgets(self):
+    def create_widgets(self) -> tuple:
         # create widgets
         audioqualitylabel = ttk.Label(self, text='Preferred audio quality')
         audioqualityoptionmenu = ttk.OptionMenu(
@@ -302,6 +300,8 @@ class Options(ttk.Frame):
             self.audioqualityvariable.get(),
             *AUDIOQUALITYOPTIONS
         )
+        audioqualityoptionmenu.configure(state='disabled') # ffmpeg issues
+        tooltip.Tooltip(audioqualityoptionmenu, "Disabled due to ffmpeg issues")
 
         attachsingleimageslabel = ttk.Label(self, text='Cover art attach\nmethod for singles')
         attachsingleimagesoptionmenu = ttk.OptionMenu(
@@ -319,13 +319,16 @@ class Options(ttk.Frame):
             *ATTACHIMAGEOPTIONS
         )
 
-        imagesizelabel = ttk.Label(self, text='Target image size')
-        imagesizeoptionmenu = ttk.OptionMenu(
+        imagesizelabel = ttk.Label(self, text='Target image size\n(Square N x N)')
+        imagesizespinbox = ttk.Spinbox(
             self,
-            self.imagesizevariable,
-            self.imagesizevariable.get(),
-            *IMAGESIZEOPTIONS
+            from_ = IMAGESIZEOPTIONS[0],
+            to = IMAGESIZEOPTIONS[1],
+            textvariable = self.imagesizevariable,
+            width = 3,
+            wrap = False
         )
+        imagesizespinbox.bind('<Return>', self.validate_spinbox)
 
         upscalerlabel = ttk.Label(self, text='Upscale method\n(NCNN-Vulkan)')
         upscaleroptionmenu = ttk.OptionMenu(
@@ -342,9 +345,11 @@ class Options(ttk.Frame):
             self.downscalervariable.get(),
             *DOWNSCALEROPTIONS
         )
+        tooltip.Tooltip(downscaleroptionmenu, '"Area" gives moiré-free results')
 
         overwritelabel = ttk.Label(self, text='Overwrite duplicates')
         overwritecheckbutton = ttk.Checkbutton(self, text=None, variable=self.overwritevariable)
+        tooltip.Tooltip(overwritecheckbutton, 'Overwrite duplicate files, otherwise skip. Best left enabled')
 
         # configure
         kwargs = {'sticky': tk.EW, 'padx': self.pad, 'pady': self.pad}
@@ -357,7 +362,7 @@ class Options(ttk.Frame):
         attachalbumimageslabel.grid         (row=2, column=0, **kwargs)
         attachalbumimagesoptionmenu.grid    (row=2, column=1, **kwargs)
         imagesizelabel.grid                 (row=3, column=0, **kwargs)
-        imagesizeoptionmenu.grid            (row=3, column=1, **kwargs)
+        imagesizespinbox.grid               (row=3, column=1, **kwargs)
         upscalerlabel.grid                  (row=4, column=0, **kwargs)
         upscaleroptionmenu.grid             (row=4, column=1, **kwargs)
         downscalerlabel.grid                (row=5, column=0, **kwargs)
@@ -369,13 +374,24 @@ class Options(ttk.Frame):
             audioqualityoptionmenu,
             attachsingleimagesoptionmenu,
             attachalbumimagesoptionmenu,
-            imagesizeoptionmenu,
+            imagesizespinbox,
             upscaleroptionmenu,
             downscaleroptionmenu,
             overwritecheckbutton
         )
 
-def main():
+    def validate_spinbox(self, a: tk.Event) -> None:
+        try:
+            value = int(self.imagesizevariable.get())
+            if value > IMAGESIZEOPTIONS[1]: # too big
+                self.imagesizevariable.set(IMAGESIZEOPTIONS[1])
+            elif value < IMAGESIZEOPTIONS[0]: # too smol
+                self.imagesizevariable.set(IMAGESIZEOPTIONS[0])
+
+        except ValueError:
+            self.imagesizevariable.set(JSONDEFAULT['target_image'])
+
+def main() -> None:
     window = tk.Tk()
     window.title('MusiGui')
     window.iconbitmap('musigui.ico')
@@ -384,6 +400,7 @@ def main():
 
     style = ttk.Style(window)
     style.theme_use('clam')
+    style.configure('TSpinbox', arrowsize=16)
 
     DownloadUI(window).mainframe.mainloop()
 

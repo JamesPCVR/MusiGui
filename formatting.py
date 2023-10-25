@@ -19,7 +19,10 @@ DOWNSCALERS = {
 }
 UPSCALERETRIES = 1
 
-def format_files(infodict, settings, imagedirectory=None) -> None:
+def format_files(infodict: dict, settings: dict, imagedirectory: str=None) -> None:
+    '''
+    Uses infodict data to get and tag mp3 files, also changes filename
+    '''
     # prepare metadata
     single = False
     try:
@@ -35,16 +38,16 @@ def format_files(infodict, settings, imagedirectory=None) -> None:
     
     for info in entries:
         # for each downloaded song
-        jpgpath = info['thumbnails'][-1]['filename']
-        mp3path = jpgpath.replace('.jpg', '.mp3')
+        imagepath = info['thumbnails'][-1]['filename']
+        mp3path = imagepath.replace('.jpg', '.mp3').replace('.png', '.mp3') # if it works, it works
 
         # tag mp3 file
-        audio = tag_audio(mp3path, jpgpath, info, settings, single, imagedirectory, first)
+        audio = tag_audio(mp3path, imagepath, info, settings, single, imagedirectory, first)
         first = False
 
         # tidy up unused image files as we go
-        if imagedirectory and (jpgpath != imagedirectory):
-            os.remove(jpgpath)
+        if imagedirectory and (imagepath != imagedirectory):
+            os.remove(imagepath)
 
         # rename the file to allow for same track title by different artists
         newmp3path = os.path.join('\\'.join(mp3path.split('\\')[:-1]), f'{audio.tag.artist} - {audio.tag.title}.mp3')
@@ -56,8 +59,17 @@ def format_files(infodict, settings, imagedirectory=None) -> None:
                 os.rename(mp3path, newmp3path)
             else:
                 print(f'[format] Overwrite disabled, cannot save {newmp3path}')
+    
+    try:
+        os.remove(f'{settings["download_directory"]}/input.jpg')
+        os.remove(f'{settings["download_directory"]}/output.jpg')
+    except OSError:
+        pass
 
-def tag_audio(mp3path, jpgpath, info, settings, single, imagedirectory, first) -> eyed3.AudioFile:
+def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: bool, imagedirectory: str, first: bool) -> eyed3.AudioFile:
+    '''
+    Initialise mp3 tagging and tag mp3 file with given metadata. Returns audio object
+    '''
     # initialise mp3 tagging
     audio = eyed3.load(mp3path)
     if (audio.tag == None):
@@ -65,7 +77,15 @@ def tag_audio(mp3path, jpgpath, info, settings, single, imagedirectory, first) -
 
     # correct all images unless a specific one has been chosen
     if (not imagedirectory) or first:
-        correct_image(jpgpath, imagedirectory, settings)
+        correct_image(imagepath, imagedirectory, settings)
+
+    # correct metadata, some artists add their name before the track title
+    if info['uploader'] in info['title']:
+        info['title'] = info['title'].split(' - ')[1]
+    
+    # same as ^ but for album titles
+    if info['uploader'] in info['playlist_title']:
+        info['playlist_title'] = info['playlist_title'].split(' - ')[1]
 
     # tag the mp3 file
     audio.tag.title             = info['title']
@@ -75,23 +95,24 @@ def tag_audio(mp3path, jpgpath, info, settings, single, imagedirectory, first) -
     audio.tag.recording_date    = time.strftime('%Y', time.localtime(info['timestamp']))
     audio.tag.genre             = tag_genre(info)
     audio.tag.track_num         = info['playlist_index'] if info['playlist_index'] else 1
-    audio.tag.images.set(ImageFrame.FRONT_COVER, open(imagedirectory if imagedirectory else jpgpath, 'rb').read(), 'images/jpeg')
+    audio.tag.images.set(ImageFrame.FRONT_COVER, open(imagedirectory if imagedirectory else imagepath, 'rb').read(), 'images/jpeg')
 
     # save changes
     audio.tag.save()
     return audio
 
-def correct_image(jpgpath, imagedirectory, settings):
+def correct_image(imagepath: str, imagedirectory: str, settings: dict) -> None:
+    '''
+    Upscale/downscale image to target size. Requires image path not image object
+    '''
     # get the current image
-    img = cv2.imread(imagedirectory if imagedirectory else jpgpath)
+    img = cv2.imread(imagedirectory if imagedirectory else imagepath)
     size = min(img.shape[0:2])
     target = int(min(settings['target_image'].split('x')))
 
-    cv2.imshow('img', img)
-
-    # upscale the image if it is too small
-    if target != size:
-        cv2.imwrite('in/input.jpg', img)
+    # upscale the image if it is too small and upscaling is enabled
+    if target != size and settings["upscaler"] != 'None':
+        cv2.imwrite(f'{settings["download_directory"]}/input.jpg', img)
         retries = UPSCALERETRIES
         upscaled = False
 
@@ -110,14 +131,14 @@ def correct_image(jpgpath, imagedirectory, settings):
 
             # break if too many errors
             if result.returncode != 0:
-                print(f'[image] Error upscaling image, {retries} retry(s) left')
                 retries -= 1
                 if retries < 0:
-                    print('[image] code break')
+                    print('[image] Failed to upscale image')
                     break
+                print(f'[image] Error upscaling image, {retries} retry(s) left')
         
         if upscaled:
-            img = cv2.imread('in/output.jpg')
+            img = cv2.imread(f'{settings["download_directory"]}/output.jpg')
 
         # downscale image to target size
         print(f'[image] Downscaling {size}x{size} to {target}x{target} using {settings["downscaler"]}')
@@ -126,9 +147,12 @@ def correct_image(jpgpath, imagedirectory, settings):
             dsize=(target, target),
             interpolation=DOWNSCALERS[settings['downscaler']]
         )
-        cv2.imwrite(imagedirectory if imagedirectory else jpgpath, res)
+        cv2.imwrite(imagedirectory if imagedirectory else imagepath, res)
 
-def tag_genre(info) -> str:
+def tag_genre(info: dict) -> str:
+    '''
+    Return genre if it exists else empty string ("")
+    '''
     try:
         return info['genre']
     except KeyError:
