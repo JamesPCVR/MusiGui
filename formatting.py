@@ -38,7 +38,7 @@ def format_files(infodict: dict, settings: dict, imagedirectory: str=None) -> No
     
     for info in entries:
         # for each downloaded song
-        imagepath = info['thumbnails'][-1]['filename']
+        imagepath = str(info['thumbnails'][-1]['filename'])
         mp3path = imagepath.replace('.jpg', '.mp3').replace('.png', '.mp3') # if it works, it works
 
         # tag mp3 file
@@ -75,8 +75,11 @@ def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: 
     if (audio.tag == None):
         audio.initTag()
 
-    # correct all images unless a specific one has been chosen
-    if (not imagedirectory) or first:
+    # correct images if a downscaler is selected, only correct one image if a specific one is selected
+    msg = determine_image_correction(imagedirectory, settings, first)
+    if msg:
+        print(f'[image] {msg}, skipping')
+    else:
         correct_image(imagepath, imagedirectory, settings)
 
     # correct metadata, some artists add their name before the track title
@@ -84,8 +87,11 @@ def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: 
         info['title'] = info['title'].split(' - ')[1]
     
     # same as ^ but for album titles
-    if info['uploader'] in info['playlist_title']:
-        info['playlist_title'] = info['playlist_title'].split(' - ')[1]
+    if 'playlist_title' in info:
+        if info['uploader'] in info['playlist_title']:
+            info['playlist_title'] = info['playlist_title'].split(' - ')[1]
+    else:
+        info['playlist_title'] = info['title']
 
     # tag the mp3 file
     audio.tag.title             = info['title']
@@ -157,3 +163,18 @@ def tag_genre(info: dict) -> str:
         return info['genre']
     except KeyError:
         return ''
+
+def determine_image_correction(imagedirectory: str, settings: dict, first: bool) -> str:
+    '''
+    determine whether to correct an image or not, returns `None` if image needs correcting, str with reason not to otherwise
+    '''
+    if settings['downscaler'] == 'None':
+        return 'Image scaling disabled'
+    
+    if settings['download_covers'] == False:
+        return 'No image to scale'
+    
+    if not imagedirectory and first:
+        return 'Only album cover image needs scaling'
+
+    return ''

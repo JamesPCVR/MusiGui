@@ -15,7 +15,7 @@ AUDIOQUALITYOPTIONS = ('320 Kbps', '240 Kbps', '160 Kbps', '128 Kbps', '96 Kbps'
 IMAGESIZEOPTIONS    = (256, 8192)
 ATTACHIMAGEOPTIONS  = ('youtube-dl', 'Manual select')
 UPSCALEROPTIONS     = ('RealSR', 'Waifu2x', 'SRMD', 'None')
-DOWNSCALEROPTIONS   = ('Lanczos 8x8', 'Bicubic 4x4', 'Area', 'Bilinear', 'Nearest-neighbour')
+DOWNSCALEROPTIONS   = ('Lanczos 8x8', 'Bicubic 4x4', 'Area', 'Bilinear', 'Nearest-neighbour', 'None')
 
 DATAJSON = 'data.json'
 JSONDEFAULT = {
@@ -26,6 +26,7 @@ JSONDEFAULT = {
     'upscaler':             UPSCALEROPTIONS[3],
     'downscaler':           DOWNSCALEROPTIONS[0],
     'overwrite':            True,
+    'download_covers':       True,
     'download_directory':   '',
     'upscaler_directory':   ''
 }
@@ -91,6 +92,7 @@ class DownloadUI:
             'upscaler':             self.options.upscalervariable.get(),
             'downscaler':           self.options.downscalervariable.get(),
             'overwrite':            self.options.overwritevariable.get(),
+            'download_covers':      self.options.downloadcoversvariable.get(),
             'download_directory':   self.directories.downloaddirectoryvariable.get(),
             'upscaler_directory':   self.directories.upscalerdirectoryvariable.get()
         }
@@ -99,8 +101,7 @@ class DownloadUI:
     
     def exit(self) -> None:
         self.save_data()
-        # frame is nulled to let download jobs know gui is unavailable
-        self.mainframe = None
+        self.mainframe = None # frame is nulled, ongoing downloads will cancel
         self.parent.destroy()
     
     def get_json_data(self) -> dict:
@@ -109,7 +110,9 @@ class DownloadUI:
             # DATAJSON exists
             if set(data) != set(JSONDEFAULT):
                 # DATAJSON does not contain correct data
-                return JSONDEFAULT
+                for key in JSONDEFAULT.keys():
+                    if key not in data:
+                        data[key] = JSONDEFAULT[key]
             return data
         except FileNotFoundError:
             # DATAJSON does not exist
@@ -141,7 +144,7 @@ class DownloadUI:
 
     def download_songs(self) -> None:
         # check for errors
-        if self.options.upscalervariable.get() != 'None': # upscaling disabled, no need to check for models
+        if self.options.upscalervariable.get() != 'None' and self.options.downscalervariable.get() != 'None': # upscaling disabled, no need to check for models
             modeldirectory = self.directories.upscalerdirectoryvariable.get() + formatting.UPSCALERS[self.options.upscalervariable.get()]
             if not os.path.exists(modeldirectory):
                 action = messagebox.askyesno(title='Could not find upscaler', message=f'Could not find {self.options.upscalervariable.get()} at\n{modeldirectory}\nContinue anyway?')
@@ -154,37 +157,46 @@ class DownloadUI:
             widget.configure(state='disabled')
         self.mainframe.update()
 
-        # collect urls from gui, pack into list to give to yt-dl
-        self.save_data()
-        urls = self.main.linkstext.get('1.0', tk.END).split('\n')[:-1]
-
-        cleanedurls = [i for i in urls if i not in IGNOREDURLS]
-        self.set_progress_bar(0, len(cleanedurls))
-
-        # initialise yt-dl
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': self.directories.downloaddirectoryvariable.get() + '/%(title)s.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3'
-                #'preferredquality': self.options.audioqualityvariable.get().removesuffix(' Kbps') + 'K' # ffmpeg issues
-            }],
-            'writethumbnail': True
-        }
-        self.ydl = youtube_dl.YoutubeDL(ydl_opts)
-        self.ydl.add_progress_hook(self.yt_progress)
-
-        # download each item in turn
         try:
-            for i, url in enumerate(cleanedurls):
-                self.download(self.ydl, url)
-                self.set_progress_bar(i+1, len(cleanedurls))
+            # collect urls from gui, pack into list to give to yt-dl
+            self.save_data()
+            urls = self.main.linkstext.get('1.0', tk.END).split('\n')[:-1]
 
-            messagebox.showinfo(title=None, message='Download(s) finished')
+            cleanedurls = [url for url in urls if url not in IGNOREDURLS]
+            if len(cleanedurls) == 0:
+                raise ZeroDivisionError('URL list empty')
+            
+            self.set_progress_bar(0, len(cleanedurls))
+
+            # initialise yt-dl
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': self.directories.downloaddirectoryvariable.get() + '/%(title)s.%(ext)s',
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3'
+                    #'preferredquality': self.options.audioqualityvariable.get().removesuffix(' Kbps') + 'K' # ffmpeg issues
+                }],
+                'writethumbnail': self.options.downloadcoversvariable.get()
+            }
+            self.ydl = youtube_dl.YoutubeDL(ydl_opts)
+            self.ydl.add_progress_hook(self.yt_progress)
+
+            # download each item in turn
+            try:
+                for i, url in enumerate(cleanedurls):
+                    self.download(self.ydl, url)
+                    self.set_progress_bar(i+1, len(cleanedurls))
+
+                messagebox.showinfo(title=None, message='Download(s) finished')
+            
+            # yt-dl error
+            except youtube_dl.DownloadError as e:
+                messagebox.showerror(title='yt-dl error', message=str(e).split('.')[0])
         
-        except youtube_dl.DownloadError as e:
-            messagebox.showerror(title=None, message=str(e).split('.')[0])
+        # some other error ocurred
+        except Exception as e:
+            messagebox.showerror(title='Script error', message=str(e))
         
         # enable widgets
         self.downloadbutton.configure(state='normal')
@@ -288,6 +300,7 @@ class Options(ttk.Frame):
         self.upscalervariable               = tk.StringVar(value=jsondata['upscaler'])
         self.downscalervariable             = tk.StringVar(value=jsondata['downscaler'])
         self.overwritevariable              = tk.IntVar(value=jsondata['overwrite'])
+        self.downloadcoversvariable         = tk.IntVar(value=jsondata['download_covers'])
 
         self.widgets = self.create_widgets()
 
@@ -301,7 +314,7 @@ class Options(ttk.Frame):
             *AUDIOQUALITYOPTIONS
         )
         audioqualityoptionmenu.configure(state='disabled') # ffmpeg issues
-        tooltip.Tooltip(audioqualityoptionmenu, "Disabled due to ffmpeg issues")
+        tooltip.Tooltip(audioqualityoptionmenu, "Disabled due to ffmpeg issues, will download best available audio")
 
         attachsingleimageslabel = ttk.Label(self, text='Cover art attach\nmethod for singles')
         attachsingleimagesoptionmenu = ttk.OptionMenu(
@@ -337,6 +350,7 @@ class Options(ttk.Frame):
             self.upscalervariable.get(),
             *UPSCALEROPTIONS
         )
+        tooltip.Tooltip(upscaleroptionmenu, 'Does nothing if downscale method is set to "None"')
 
         downscalerlabel = ttk.Label(self, text='Downscale method')
         downscaleroptionmenu = ttk.OptionMenu(
@@ -345,7 +359,7 @@ class Options(ttk.Frame):
             self.downscalervariable.get(),
             *DOWNSCALEROPTIONS
         )
-        tooltip.Tooltip(downscaleroptionmenu, '"Area" gives moiré-free results')
+        tooltip.Tooltip(downscaleroptionmenu, '"None" disables image scaling\n"Area" gives moiré-free results')
 
         overwritelabel = ttk.Label(self, text='Overwrite duplicates')
         overwritecheckbutton = ttk.Checkbutton(self, text=None, variable=self.overwritevariable)
@@ -371,7 +385,7 @@ class Options(ttk.Frame):
         overwritecheckbutton.grid           (row=6, column=1, **kwargs)
 
         return (
-            audioqualityoptionmenu,
+            #audioqualityoptionmenu, # ffmpeg issues
             attachsingleimagesoptionmenu,
             attachalbumimagesoptionmenu,
             imagesizespinbox,

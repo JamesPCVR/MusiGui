@@ -2,6 +2,8 @@
 
 Pronounced `myou-zi-goo-ee`. It is a GUI wrapper around the legendary [youtube-dl](https://github.com/ytdl-org/youtube-dl) and AI upscalers: RealSR; Waifu2x; and SRMD.
 
+Image scaling can be disabled by selecting `Downscale method` as `None`.
+
 The windows freezes during a download, this application is only single-threaded. If your OS says it's "not responding" you probably just need to wait for the download to finish.
 
 If you ever get stuck or need help; press the handy-dandy `help` button in the program! There are also some tooltips (hover for 1 second).
