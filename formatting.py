@@ -1,9 +1,9 @@
 import os
+import time
+import subprocess
 import eyed3
 from eyed3.id3.frames import ImageFrame
-import time
 import cv2
-import subprocess
 
 UPSCALERS = {
     'RealSR':   '/realsr-ncnn-vulkan/realsr-ncnn-vulkan.exe',
@@ -19,7 +19,11 @@ DOWNSCALERS = {
 }
 UPSCALERETRIES = 1
 
-def format_files(infodict: dict, settings: dict, imagedirectory: str=None) -> None:
+def format_files(
+        infodict: dict,
+        settings: dict,
+        imagedirectory: str=None
+    ) -> None:
     '''
     Uses infodict data to get and tag mp3 files, also changes filename
     '''
@@ -30,27 +34,39 @@ def format_files(infodict: dict, settings: dict, imagedirectory: str=None) -> No
     except KeyError:
         single = True
         entries = [infodict] # don't judge me, it works
-    
+
     # if a cover has been selected, only correct that one
     first = False
     if imagedirectory:
         first = True
-    
+
     for info in entries:
         # for each downloaded song
-        imagepath = str(info['thumbnails'][-1]['filename'])
-        mp3path = imagepath.replace('.jpg', '.mp3').replace('.png', '.mp3') # if it works, it works
+        imagepath = str(info['thumbnails'][-1]['filepath'])
+        mp3path = str(info['requested_downloads'][0]['filepath'])
 
         # tag mp3 file
-        audio = tag_audio(mp3path, imagepath, info, settings, single, imagedirectory, first)
+        audio = tag_audio(
+            mp3path,
+            imagepath,
+            info,
+            settings,
+            single,
+            imagedirectory,
+            first
+        )
         first = False
 
         # tidy up unused image files as we go
         if imagedirectory and (imagepath != imagedirectory):
             os.remove(imagepath)
 
-        # rename the file to allow for same track title by different artists
-        newmp3path = os.path.join('\\'.join(mp3path.split('\\')[:-1]), f'{audio.tag.artist} - {audio.tag.title}.mp3')
+        # rename the file to allow for files with /
+        # same track title by different artists
+        newmp3path = os.path.join(
+            '\\'.join(mp3path.split('\\')[:-1]),
+            f'{audio.tag.artist} - {audio.tag.title}.mp3'
+        )
         try:
             os.rename(mp3path, newmp3path)
         except OSError:
@@ -59,23 +75,34 @@ def format_files(infodict: dict, settings: dict, imagedirectory: str=None) -> No
                 os.rename(mp3path, newmp3path)
             else:
                 print(f'[format] Overwrite disabled, cannot save {newmp3path}')
-    
+
     try:
         os.remove(f'{settings["download_directory"]}/input.jpg')
         os.remove(f'{settings["download_directory"]}/output.jpg')
     except OSError:
         pass
 
-def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: bool, imagedirectory: str, first: bool) -> eyed3.AudioFile:
+def tag_audio(
+        mp3path: str,
+        imagepath: str,
+        info: dict,
+        settings: dict,
+        single: bool,
+        imagedirectory: str,
+        first: bool
+    ) -> eyed3.AudioFile:
     '''
-    Initialise mp3 tagging and tag mp3 file with given metadata. Returns audio object
+    Initialise mp3 tagging and tag mp3 file with given metadata.\n
+    Returns audio object.
     '''
     # initialise mp3 tagging
+    eyed3.log.setLevel("ERROR")
     audio = eyed3.load(mp3path)
-    if (audio.tag == None):
+    if audio.tag is None:
         audio.initTag()
 
-    # correct images if a downscaler is selected, only correct one image if a specific one is selected
+    # correct images if a downscaler is selected,
+    # only correct one image if a specific one is selected
     msg = determine_image_correction(imagedirectory, settings, first)
     if msg:
         print(f'[image] {msg}, skipping')
@@ -85,7 +112,7 @@ def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: 
     # correct metadata, some artists add their name before the track title
     if info['uploader'] in info['title']:
         info['title'] = info['title'].split(' - ')[1]
-    
+
     # same as ^ but for album titles
     if 'playlist_title' in info:
         if info['uploader'] in info['playlist_title']:
@@ -98,10 +125,17 @@ def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: 
     audio.tag.artist            = info['uploader']
     audio.tag.album_artist      = info['uploader']
     audio.tag.album             = info['playlist_title'] if not single else info['title']
-    audio.tag.recording_date    = time.strftime('%Y', time.localtime(info['timestamp']))
+    audio.tag.recording_date    = time.strftime(
+        '%Y',
+        time.localtime(info['timestamp'] if 'timestamp' in info else info['release_timestamp'])
+    )
     audio.tag.genre             = tag_genre(info)
     audio.tag.track_num         = info['playlist_index'] if info['playlist_index'] else 1
-    audio.tag.images.set(ImageFrame.FRONT_COVER, open(imagedirectory if imagedirectory else imagepath, 'rb').read(), 'images/jpeg')
+    audio.tag.images.set(
+        ImageFrame.FRONT_COVER,
+        open(imagedirectory if imagedirectory else imagepath, 'rb').read(),
+        'images/jpeg'
+    )
 
     # save changes
     audio.tag.save()
@@ -109,7 +143,8 @@ def tag_audio(mp3path: str, imagepath: str, info: dict, settings: dict, single: 
 
 def correct_image(imagepath: str, imagedirectory: str, settings: dict) -> None:
     '''
-    Upscale/downscale image to target size. Requires image path not image object
+    Upscale/downscale image to target size.\n
+    Requires image path not image object.
     '''
     # get the current image
     img = cv2.imread(imagedirectory if imagedirectory else imagepath)
@@ -125,13 +160,19 @@ def correct_image(imagepath: str, imagedirectory: str, settings: dict) -> None:
         # upscale the image in 4x chunks
         while target > size:
             upscaled = True
-            print(f'[image] Upscaling from {size}x{size} to {size*4}x{size*4} using {settings["upscaler"]}')
+            print(f'[image] Upscaling from {size}x{size} to {size*4}x{size*4} \
+                  using {settings["upscaler"]}')
 
             # upscale image using selected engine
             result = subprocess.run(
-                f'"{settings["upscaler_directory"] + UPSCALERS[settings["upscaler"]]}" -i "{settings["download_directory"]}/input.jpg" -o "{settings["download_directory"]}/output.jpg" -s 4',
+                f'\
+                    "{settings["upscaler_directory"] + UPSCALERS[settings["upscaler"]]}" \
+                    -i "{settings["download_directory"]}/input.jpg" \
+                    -o "{settings["download_directory"]}/output.jpg" -s 4\
+                ',
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT
+                stderr=subprocess.STDOUT,
+                check=False
             )
             size *= 4
 
@@ -142,12 +183,13 @@ def correct_image(imagepath: str, imagedirectory: str, settings: dict) -> None:
                     print('[image] Failed to upscale image')
                     break
                 print(f'[image] Error upscaling image, {retries} retry(s) left')
-        
+
         if upscaled:
             img = cv2.imread(f'{settings["download_directory"]}/output.jpg')
 
         # downscale image to target size
-        print(f'[image] Downscaling {size}x{size} to {target}x{target} using {settings["downscaler"]}')
+        print(f'[image] Downscaling {size}x{size} to {target}x{target} \
+              using {settings["downscaler"]}')
         res = cv2.resize(
             img,
             dsize=(target, target),
@@ -164,16 +206,21 @@ def tag_genre(info: dict) -> str:
     except KeyError:
         return ''
 
-def determine_image_correction(imagedirectory: str, settings: dict, first: bool) -> str:
+def determine_image_correction(
+        imagedirectory: str,
+        settings: dict,
+        first: bool
+    ) -> str:
     '''
-    determine whether to correct an image or not, returns `None` if image needs correcting, str with reason not to otherwise
+    determine whether to correct an image or not.\n
+    returns `None` if image needs correcting, str with reason not to otherwise
     '''
     if settings['downscaler'] == 'None':
         return 'Image scaling disabled'
-    
-    if settings['download_covers'] == False:
+
+    if settings['download_covers'] is False:
         return 'No image to scale'
-    
+
     if not imagedirectory and first:
         return 'Only album cover image needs scaling'
 
