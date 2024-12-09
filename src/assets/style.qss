@@ -1,0 +1,165 @@
+QWidget {
+    color: <text_norm>;
+    background: <base>;
+    font-size: 14px;
+    height: 30px;
+    border: 0px;
+    border-radius: <radius_small>px;
+    selection-color: <text_primary>;
+    selection-background-color: <primary>;
+}
+
+QGroupBox {
+    background-color: <group>;
+    border: 0px;
+}
+
+QLabel {
+    font: <text_norm>;
+    background: <group>;
+}
+
+QLabel#title {
+    color: <text_title>;
+    font-weight: bold;
+}
+
+QPushButton {
+    font-size: 18px;
+    font-weight: bold;
+    color: <text_primary>;
+    background: <primary>;
+}
+
+QPushButton::hover {
+    background: <secondary>;
+}
+
+QPushButton::disabled {
+    background: <inactive>;
+}
+
+QPushButton#accent {
+    height: 50px;
+    font-size: 28px;
+    border-radius: <radius_large>px;
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 <primary>, stop: 1 <secondary>
+    );
+}
+
+QPushButton::hover#accent {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 <secondary>, stop: 1 <primary>
+    );
+}
+
+QPushButton::pressed#accent {
+    background: <secondary>;
+}
+
+QPushButton#warn {
+    background: <warn>;
+}
+
+QProgressBar {
+    border: 0px;
+    background: <inactive>;
+}
+
+QProgressBar::chunk {
+    background: <primary>;
+    border-radius: <radius_small>px;
+}
+
+QLineEdit {
+    background: <form>;
+    padding-left: 8px;
+}
+
+QLineEdit::read-only {
+    background: <inactive>;
+}
+
+QTextEdit {
+    background: <form>;
+    padding-left: 5px;
+}
+
+QTextEdit::disabled {
+    background: <inactive>;
+}
+
+QComboBox {
+    background: <form>;
+    padding-left: 8px;
+}
+
+QComboBox::disabled {
+    background: <inactive>;
+}
+
+QComboBox::drop-down {
+    background: <primary>;
+    border-radius: <radius_small>px;
+    width: 30px;
+}
+
+QComboBox::drop-down::hover {
+    background: <secondary>;
+}
+
+QComboBox::down-arrow {
+    image: url(assets/down-arrow.png);
+}
+
+QListView {
+    border-radius: 0px;
+    outline: 0px;
+}
+
+QListView::item::selected {
+    background: <primary>;
+    color: <text_norm>;
+}
+
+QSpinBox {
+    background: <form>;
+    padding-left: 5px;
+}
+
+QSpinBox::disabled {
+    background: <inactive>;
+}
+
+QSpinBox::up-button {
+    background: <primary>;
+    border-top-right-radius: <radius_small>px;
+    border-top-left-radius: <radius_small>px;
+    width: 30px;
+}
+
+QSpinBox::up-button::hover {
+    background: <secondary>;
+}
+
+QSpinBox::up-arrow {
+    image: url(assets/up-arrow-slim.png);
+}
+
+QSpinBox::down-button {
+    background: <primary>;
+    border-bottom-right-radius: <radius_small>px;
+    border-bottom-left-radius: <radius_small>px;
+    width: 30px;
+}
+
+QSpinBox::down-button::hover {
+    background: <secondary>;
+}
+
+QSpinBox::down-arrow {
+    image: url(assets/down-arrow-slim.png);
+}
