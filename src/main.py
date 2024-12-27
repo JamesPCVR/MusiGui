@@ -12,7 +12,8 @@ class ProgressLogger():
         self.signal = None
         self.data = {
             "partial": 0,
-            "total": 0
+            "total": 0,
+            "error": False
         }
         self.progress = {
             "to do": 0,
@@ -78,6 +79,7 @@ class ProgressLogger():
     def error(self, msg:str):
         """error string"""
         print("ERROR: " + msg)
+        self.data["error"] = True
         self.update(msg)
 
     def set_signal(self, signal:SignalInstance) -> None:
@@ -96,7 +98,8 @@ class ProgressLogger():
         """reset the progress tracker."""
         self.data = {
             "partial": 0,
-            "total": 0
+            "total": 0,
+            "error": False
         }
         self.progress = {
             "to do": 0,
@@ -129,6 +132,10 @@ class TaskThreaded(QThread):
     def get_valid_ai_models(self) -> list[str]:
         """Get available ai models."""
         return self.task.get_valid_ai_models()
+
+    def get_interpolation_methods(self) -> list[str]:
+        """Get available interpolation methods."""
+        return self.task.get_interpolation_methods()
 
 def main() -> None:
     """Main script."""

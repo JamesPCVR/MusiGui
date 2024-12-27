@@ -57,6 +57,10 @@ class MusHappy:
     def get_valid_ai_models(self) -> list[str]:
         """Get available ai models."""
         return self.image_handler.config.get_valid_ai_models()
+    
+    def get_interpolation_methods(self) -> list[str]:
+        """Get interpolation methods."""
+        return self.image_handler.config.get_interpolation_methods()
 
     def download_and_tag(self, url_list:list[str]) -> None:
         """

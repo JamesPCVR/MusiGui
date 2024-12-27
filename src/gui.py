@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
     QProgressBar
 )
 
+from showinfm import show_in_file_manager
+
 MARGINS = 10
 WIDTH = 1000
 HEIGHT = 400
@@ -39,14 +41,6 @@ COVER_ATTACH_GROUP = [
     "Individual",
     "Most Common"
 ]
-SCALE_METHOD = [
-    "Lanczos 8x8",
-    "Bicubic",
-    "Area",
-    "Bilinear",
-    "Nearest-Neighbour",
-    "Do Not Scale",
-]
 
 class DownloadUI(QWidget):
     """Main application."""
@@ -55,7 +49,8 @@ class DownloadUI(QWidget):
     def __init__(self, task:QThread) -> None:
         super().__init__()
         self.task = task
-        self.task.set_signal(self.progress_changed)
+        if task is not None:
+            self.task.set_signal(self.progress_changed)
 
         self.text_edit:QTextEdit = None
         self.bar_partial:QProgressBar = None
@@ -101,11 +96,21 @@ class DownloadUI(QWidget):
 
     def _build_directories(self) -> QGroupBox:
         """Build the directory editor of the UI."""
-        title = QLabel("Folders")
+        title = QLabel("Output")
         title.setObjectName("title")
         title.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        label_dir_out = QLabel("Output Directory:")
+        button_dir_out = QPushButton("Select")
+        button_dir_out.setFixedWidth(80)
+        button_dir_out.clicked.connect(
+            lambda: self.update_content(button_dir_out)
+        )
+        self._add_active_widget(
+            button_dir_out,
+            "button",
+            "directories",
+            ("download", "output_directory")
+        )
 
         line_edit_dir_out = QLineEdit()
         line_edit_dir_out.setMinimumWidth(250)
@@ -120,10 +125,10 @@ class DownloadUI(QWidget):
             ("download", "output_directory")
         )
 
-        button_dir_out = QPushButton("Select")
-        button_dir_out.setFixedWidth(80)
-        button_dir_out.clicked.connect(
-            lambda: self.update_content(button_dir_out)
+        button_dir_open = QPushButton("Open")
+        button_dir_open.setFixedWidth(80)
+        button_dir_open.clicked.connect(
+            lambda: show_in_file_manager(line_edit_dir_out.text())
         )
         self._add_active_widget(
             button_dir_out,
@@ -132,40 +137,10 @@ class DownloadUI(QWidget):
             ("download", "output_directory")
         )
 
-        label_ups_root = QLabel("Upscaler Directory:")
-
-        line_edit_ups_root = QLineEdit()
-        line_edit_ups_root.setMinimumWidth(250)
-        line_edit_ups_root.editingFinished.connect(
-            lambda: self.update_content(line_edit_ups_root)
-        )
-        line_edit_ups_root.setToolTip("Folder containing the AI upscalers")
-        self._add_active_widget(
-            line_edit_ups_root,
-            "line",
-            "directories", 
-            ("image", "ai_directory")
-        )
-
-        button_ups_root = QPushButton("Select")
-        button_ups_root.setFixedWidth(80)
-        button_ups_root.clicked.connect(
-            lambda: self.update_content(button_ups_root)
-        )
-        self._add_active_widget(
-            button_ups_root,
-            "button",
-            "directories",
-            ("image", "ai_directory")
-        )
-
         grid = QGridLayout()
-        grid.addWidget(label_dir_out, 0, 0)
+        grid.addWidget(button_dir_out, 0, 0)
         grid.addWidget(line_edit_dir_out, 0, 1)
-        grid.addWidget(button_dir_out, 0, 2)
-        grid.addWidget(label_ups_root, 1, 0)
-        grid.addWidget(line_edit_ups_root, 1, 1)
-        grid.addWidget(button_ups_root, 1, 2)
+        grid.addWidget(button_dir_open, 0, 2)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -185,6 +160,7 @@ class DownloadUI(QWidget):
 
         self.text_edit = QTextEdit()
         self.text_edit.setAcceptRichText(False)
+        self.text_edit.setPlaceholderText("Paste links here")
         self._add_active_widget(
             self.text_edit,
             "text",
@@ -209,7 +185,9 @@ class DownloadUI(QWidget):
         combo_attach_single = QComboBox()
         combo_attach_single.addItems(COVER_ATTACH_SINGLE)
         combo_attach_single.setToolTip(
-            "Manual mode will return in a future update."
+            """Manual mode will return in a future update.
+Select how to choose cover art for singles:
+Automatic - Use the original image."""
         )
         combo_attach_single.currentIndexChanged.connect(
             lambda: self.update_content(combo_attach_single)
@@ -225,7 +203,11 @@ class DownloadUI(QWidget):
         combo_attach_group = QComboBox()
         combo_attach_group.addItems(COVER_ATTACH_GROUP)
         combo_attach_group.setToolTip(
-            "Manual mode will return in a future update."
+            """Manual mode will return in a future update.
+Select how to choose cover art for albums or playlists:
+Individual - Use the original image for each song.
+Most common - Use the most common image for all the
+    songs in the group."""
         )
         combo_attach_group.currentIndexChanged.connect(
             lambda: self.update_content(combo_attach_group)
@@ -254,7 +236,8 @@ class DownloadUI(QWidget):
         )
 
         ai_method = ["None"]
-        ai_method.extend(self.task.get_valid_ai_models())
+        if self.task is not None:
+            ai_method.extend(self.task.get_valid_ai_models())
         combo_ai_method = QComboBox()
         combo_ai_method.addItems(ai_method)
         combo_ai_method.currentIndexChanged.connect(
@@ -268,8 +251,11 @@ class DownloadUI(QWidget):
             ai_method
         )
 
+        scale_methods = ["Do not Scale"]
+        if self.task is not None:
+            scale_methods.extend(self.task.get_interpolation_methods())
         combo_scale_method = QComboBox()
-        combo_scale_method.addItems(SCALE_METHOD)
+        combo_scale_method.addItems(scale_methods)
         combo_scale_method.currentIndexChanged.connect(
             lambda: self.update_content(combo_scale_method)
         )
@@ -278,15 +264,15 @@ class DownloadUI(QWidget):
             "combo",
             "image", 
             ("image", "interpolate_method"),
-            SCALE_METHOD
+            scale_methods
         )
 
         form = QFormLayout()
         form.addRow(self.tr("&Attach art for singles:"), combo_attach_single)
         form.addRow(self.tr("&Attach art for groups:"), combo_attach_group)
-        form.addRow(self.tr("&Target image size:"), spin_target_image)
+        form.addRow(self.tr("&Image size:"), spin_target_image)
         form.addRow(self.tr("&AI upscaling model:"), combo_ai_method)
-        form.addRow(self.tr("Scale images using:"), combo_scale_method)
+        form.addRow(self.tr("Image scaling:"), combo_scale_method)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -370,6 +356,8 @@ class DownloadUI(QWidget):
             if dl is None:
                 continue
 
+            d = None
+
             match widget_data["type"]:
                 case "line":
                     widget:QLineEdit
@@ -390,7 +378,8 @@ class DownloadUI(QWidget):
                     else:
                         return
 
-            data[dl[0]][dl[1]] = d
+            if d is not None:
+                data[dl[0]][dl[1]] = d
 
             # if single object is specified, no need to check others
             if obj is not None:
@@ -459,6 +448,10 @@ class DownloadUI(QWidget):
 
     def update_progress(self, msg:str, data:dict[str,int]) -> None:
         """Update the progress bars."""
+        if data["error"] is True:
+            self.set_read_only(False)
+            return
+
         self.bar_partial.setValue(data["partial"])
         self.bar_total.setValue(data["total"])
 

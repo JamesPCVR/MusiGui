@@ -4,7 +4,7 @@ import typing
 
 class Config:
     """Base class for the configuration managers."""
-    
+
     _configdir = "config\\empty.json"
     config = {}
 

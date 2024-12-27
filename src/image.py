@@ -14,29 +14,10 @@ PICK_GROUP_EACH = 0
 PICK_GROUP_MOST_COMMON = 1
 PICK_GROUP_MANUAL = 2
 
-# image scale conditions
-SCALE_WHEN_NEVER   = 0
-SCALE_WHEN_SMALLER = 1
-SCALE_WHEN_LARGER  = 2
-SCALE_WHEN_ALWAYS  = 3
-SCALE_WHEN = [
-    [ 0, "Do Not Scale" ],
-    [ 1, "No Smaller Than" ],
-    [ 2, "No Larger Than" ],
-    [ 3, "Exactly" ],
-]
-
-# image scale methods
-SCALE_TYPE_NONE = 0
-SCALE_TYPE_LINEAR = 1
-SCALE_TYPE_AREA = 2
-SCALE_TYPE_CUBIC = 3
-SCALE_TYPE_LANCZOS = 4
-SCALE_TYPE = [
-    [ cv2.INTER_LINEAR,   "Bilinear" ],
-    [ cv2.INTER_AREA,     "Area" ],
-    [ cv2.INTER_CUBIC,    "Bicubic 4x4" ],
-    [ cv2.INTER_LANCZOS4, "Lanczos 8x8" ],
+SCALE_TYPES = [
+    [ cv2.INTER_LINEAR,   "Fastest" ],
+    [ cv2.INTER_AREA,     "Balanced" ],
+    [ cv2.INTER_LANCZOS4, "Best Quality" ],
 ]
 
 class ImageConfig(configure.Config):
@@ -85,6 +66,10 @@ class ImageConfig(configure.Config):
         self._check_valid_models()
         return self.valid_ai_models
 
+    def get_interpolation_methods(self) -> list[str]:
+        """Get available interpolation methods."""
+        return [name for _, name in self.config["interpolation"]]
+
     def default(self) -> None:
         """Load the default configuration."""
         ais = [{
@@ -104,9 +89,9 @@ class ImageConfig(configure.Config):
         self.config = {
             "add_image_single":       PICK_SINGLE_AUTO,
             "add_image_group":        PICK_GROUP_MOST_COMMON,
-            "image_scale_conditions": SCALE_WHEN_ALWAYS,
             "image_size_target":      1024,
-            "interpolate_method":     SCALE_TYPE_CUBIC,
+            "interpolation":          SCALE_TYPES,
+            "interpolate_method":     1,
             "ai_method":              0,
             "ai_directory":           "ai\\",
             "ai_commands":            ais
@@ -366,15 +351,12 @@ class ImageFormatter:
         # image needs to be square
         self.crop_image()
 
+        # check if ai upscaling is enabled
+        if self.config.get_value("ai_method") != 0:
+            self.upscale_image()
+
         # do not resize the image if scaling is disabled
-        _scale_selection = self.config.get_value("image_scale_conditions")
-        if SCALE_WHEN[_scale_selection] != SCALE_WHEN_NEVER:
-
-            # check if ai upscaling is enabled
-            if self.config.get_value("ai_method") != 0:
-                self.upscale_image()
-
-            # scale the image to the final size
+        if self.config.get_value("interpolate_method") != 0:
             self.resize_image()
 
         self.export()
@@ -509,7 +491,8 @@ class ImageFormatter:
         )
         self.image = cv2.resize(
             self.image,
-            dsize=(_target, _target)
+            dsize=(_target, _target),
+            interpolation=SCALE_TYPES[self.config.get_value("interpolation_method") - 1][0]
         )
 
     def export(self, directory:str=None) -> None:
