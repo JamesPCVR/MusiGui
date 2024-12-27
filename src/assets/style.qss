@@ -9,6 +9,13 @@ QWidget {
     selection-background-color: <primary>;
 }
 
+QToolTip {
+    background-color: <form>;
+    color: <text_norm>;
+    border: 2px solid <group>;
+    font-size: 14px;
+}
+
 QGroupBox {
     background-color: <group>;
     border: 0px;
