@@ -75,15 +75,15 @@ class ImageConfig(configure.Config):
         ais = [{
             "name":    "RealSR",
             "target":  "{root}\\realsr-ncnn-vulkan\\realsr-ncnn-vulkan.exe",
-            "options": "-i \"{input}\" -o \"{output}\" -s {scale}"
+            "options": "-m \"{root}\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
         },{
             "name":    "Waifu2x",
             "target":  "{root}\\waifu2x-ncnn-vulkan\\waifu2x-ncnn-vulkan.exe",
-            "options": "-i \"{input}\" -o \"{output}\" -s {scale}"
+            "options": "-m \"{root}\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
         },{
             "name":    "SRMD",
             "target":  "{root}\\ssrmd-ncnn-vulkan\\srmd-ncnn-vulkan.exe",
-            "options": "-i \"{input}\" -o \"{output}\" -s {scale}"
+            "options": "-m \"{root}\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
         }]
 
         self.config = {
