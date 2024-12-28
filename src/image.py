@@ -15,9 +15,9 @@ PICK_GROUP_MOST_COMMON = 1
 PICK_GROUP_MANUAL = 2
 
 SCALE_TYPES = [
-    [ cv2.INTER_LINEAR,   "Fastest" ],
-    [ cv2.INTER_AREA,     "Balanced" ],
-    [ cv2.INTER_LANCZOS4, "Best Quality" ],
+    [ cv2.INTER_LINEAR,   "Fastest" ], #pylint:disable=E1101
+    [ cv2.INTER_AREA,     "Balanced" ], #pylint:disable=E1101
+    [ cv2.INTER_LANCZOS4, "Best Quality" ], #pylint:disable=E1101
 ]
 
 class ImageConfig(configure.Config):
@@ -318,8 +318,8 @@ class ImageFormatter:
             return "0" * (hash_size * 2)
 
         # compute the difference image
-        grayscale = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
-        resized = cv2.resize(grayscale, (hash_size + 1, hash_size))
+        grayscale = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY) #pylint:disable=E1101
+        resized = cv2.resize(grayscale, (hash_size + 1, hash_size)) #pylint:disable=E1101
         diff = resized[:, 1:] > resized[:, :-1]
 
         # convert the difference image to a hash
@@ -380,7 +380,7 @@ class ImageFormatter:
 
         # open the image if not already or forced to
         if reload or self.image is None:
-            self.image = cv2.imread(path)
+            self.image = cv2.imread(path) #pylint:disable=E1101
 
         # image opened without errors
         if self.image is not None:
@@ -489,7 +489,7 @@ class ImageFormatter:
             f"[image] Resizing image from {_size[0]}x{_size[1]} to {_target}x{_target}", #pylint: disable=C0301
             INFO
         )
-        self.image = cv2.resize(
+        self.image = cv2.resize( #pylint:disable=E1101
             self.image,
             dsize=(_target, _target),
             interpolation=SCALE_TYPES[self.config.get_value("interpolation_method") - 1][0]
@@ -499,7 +499,7 @@ class ImageFormatter:
         """Save the image."""
         if directory is None:
             directory = self.get_image_output()
-        ret = cv2.imwrite(directory, self.image)
+        ret = cv2.imwrite(directory, self.image) #pylint:disable=E1101
         if ret is False:
             self.handler.log(
                 f"[export] Failed to save image {directory}",

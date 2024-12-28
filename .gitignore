@@ -1,6 +1,7 @@
 src/__pycache__
 src/config
 src/down
+src/*debug*
 build
 out
 ai

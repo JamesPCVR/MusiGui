@@ -3,6 +3,8 @@ import re
 import json
 import typing
 import ctypes
+import webbrowser
+import pyperclip
 
 from PySide6.QtCore import (
     QThread, Signal
@@ -556,6 +558,53 @@ class CloseDialog(QDialog):
         self.setResult(RET_CANCEL)
         event.accept()
 
+class ErrorDialog(QDialog):
+    """Crash and error dialog"""
+    def __init__(self, msg_debug:str) -> None:
+        super().__init__()
+
+        self.msg_debug = msg_debug
+        max_display = 500
+
+        self.setWindowTitle("Error")
+        icon = QIcon(ICON_DIR)
+        self.setWindowIcon(icon)
+
+        label_message_title = QLabel(self.tr("Something went wrong!"))
+        label_message_title.setObjectName("title")
+        if len(msg_debug) > max_display:
+            debug_message = "..." + msg_debug[-max_display:]
+        else:
+            debug_message = msg_debug
+        label_debug_content = QLabel(self.tr(debug_message))
+
+        button_copy = QPushButton(self.tr("Copy to clipboard"))
+        button_copy.clicked.connect(self.copy_error)
+        button_issue = QPushButton(self.tr("Create issue"))
+        button_issue.setIcon(QIcon("assets\\github_white.svg"))
+        button_issue.clicked.connect(self.create_issue)
+
+        layout = QVBoxLayout()
+        layout.addWidget(label_message_title)
+        layout.addWidget(label_debug_content)
+        layout.addWidget(button_copy)
+        layout.addWidget(button_issue)
+
+        group = QGroupBox()
+        group.setLayout(layout)
+
+        layout2 = QVBoxLayout()
+        layout2.addWidget(group)
+        self.setLayout(layout2)
+
+    def copy_error(self) -> None:
+        """paste error message to clipboard."""
+        pyperclip.copy(self.msg_debug)
+
+    def create_issue(self) -> None:
+        """open github repo to open issue page."""
+        webbrowser.open("https://github.com/JamesPCVR/MusiGui/issues")
+
 def get_style(theme_name:str|None=None) -> str:
     """
     Get the stylesheet and set the variables based on a theme.
@@ -604,5 +653,7 @@ def create_ui(task, theme_name:str=None) -> tuple[QApplication,DownloadUI]:
     return _app, _window
 
 if __name__ == "__main__":
-    app, wind = create_ui(None, "light")
+    app = QApplication()
+    ed = ErrorDialog("debug string")
+    ed.exec()
     app.exec()

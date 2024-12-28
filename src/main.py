@@ -1,9 +1,15 @@
 import sys
 import re
+import logging
+# from logging.handlers import RotatingFileHandler
+from concurrent_log_handler import ConcurrentRotatingFileHandler
 from PySide6.QtCore import QThread, SignalInstance
 
 import api
 import gui
+
+LOG_FILE = "debug.log"
+LOG_SIZE_LIMIT = 10 * 1024 # 100 KB file size limit
 
 class ProgressLogger():
     """Repeatedly called during tasks with progress messages."""
@@ -47,18 +53,26 @@ class ProgressLogger():
         msg = re.sub(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])", '', msg)
         m = msg.split(" ")
         m = [s for s in m if s != ""]
+
+        # large increments, one for each url in the list
         if msg.startswith("[mushappy] "):
             self.progress["to do"] = int(m[-1])
             self.progress["done"] = int(m[-3])
             self.progress["sub to do"] = 1
             self.progress["sub done"] = 0
+
         elif msg.startswith("[download] "):
+            # smaller increments, one for each item in a url
             if m[1].lower() == "downloading" and m[2] == "item":
                 self.progress["sub to do"] = int(m[-1]) + 1
                 self.progress["sub done"] = int(m[-3])
+
+            # done, free the UI
             elif m[1].lower() in ["done"]:
                 self.data["total"] = 100
                 done = True
+
+            # update total number of tasks to do
             else:
                 try:
                     self.data["partial"] = int(float(m[1][:-1]))
@@ -137,39 +151,48 @@ class TaskThreaded(QThread):
         """Get available interpolation methods."""
         return self.task.get_interpolation_methods()
 
-def main() -> None:
-    """Main script."""
+def main():
+    """main task"""
+    log_handler = ConcurrentRotatingFileHandler(
+        LOG_FILE,
+        mode="a",
+        maxBytes=LOG_SIZE_LIMIT,
+        backupCount=1,
+        encoding="utf-8",
+        delay=0
+    )
+    log_handler.setLevel(logging.DEBUG)
+    logging.basicConfig(filename="debug.log", level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    logger.addHandler(log_handler)
+
+    # https://stackoverflow.com/questions/6234405
+    def handle_exception(exc_type, exc_value, exc_traceback):
+        """handle and log uncaught eceptions"""
+
+        # ignore keyboard interrupt
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+        logger.critical("Uncaught Exception:", exc_info=(exc_type, exc_value, exc_traceback))
+        app.exit(1)
+
+    sys.excepthook = handle_exception
+
     theme_name = None
     if len(sys.argv) > 1:
         theme_name = sys.argv[1]
     app, window = gui.create_ui(TaskThreaded(), theme_name)
     window.update_widgets()
-    app.exec()
+    ret = app.exec()
 
-def test() -> None:
-    """Test the backend with various scenarios."""
-    mus_api = api.MusHappy()
-    mus_api.set_logger(ProgressLogger())
-
-    cfg = mus_api.get_config()
-    print(cfg)
-    mus_api.set_config(cfg) # test setting the configuration
-    mus_api.save_config()
-
-    mus_api.download_and_tag([
-        # single with one artist
-        "https://soundcloud.com/acloudyskye/spill"
-        # single with two artists
-        #"https://soundcloud.com/inzo_music/digital-night-drive"
-        # single with no artists and non-ascii title
-        #"https://soundcloud.com/officialcodly/forged-in-darkest-abyss"
-        # album with one artist
-        #"https://soundcloud.com/geoxor/sets/identity"
-        # album with many artists and some different cover art
-        #"https://soundcloud.com/inzo_music/sets/visionquest-6"
-        # single with "low-quality" cover art
-        #"https://soundcloud.com/acloudyskye/runaway"
-    ])
+    if ret != 0:
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            log = f.read()
+        ed = gui.ErrorDialog(log)
+        ed.exec()
+        app.exit(2)
 
 if __name__ == "__main__":
     main()
