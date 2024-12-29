@@ -93,7 +93,7 @@ class ImageConfig(configure.Config):
             "interpolation":          SCALE_TYPES,
             "interpolate_method":     1,
             "ai_method":              0,
-            "ai_directory":           "ai\\",
+            "ai_directory":           "ai",
             "ai_commands":            ais
         }
 
