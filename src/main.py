@@ -158,8 +158,7 @@ def main():
         mode="a",
         maxBytes=LOG_SIZE_LIMIT,
         backupCount=1,
-        encoding="utf-8",
-        delay=0
+        encoding="utf-8"
     )
     log_handler.setLevel(logging.DEBUG)
     logging.basicConfig(filename="debug.log", level=logging.DEBUG)
