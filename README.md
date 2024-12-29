@@ -10,13 +10,15 @@ Pronounced `myou-zi-goo-ee`, it is a GUI wrapper around [yt-dlp](https://github.
 <img src=img/midnight.png alt="midnight theme preview">
 </details>
 
-# Setup
+<br>
+
+# Install
 
 The easiest way to get up and running is to run the [prebuilt executable](https://github.com/JamesPCVR/MusiGui/releases/latest). Alternatively, you can run this program from source, or build it yourself.
 
-`yt-dlp` requires ffmpeg, follow [this guide](https://phoenixnap.com/kb/ffmpeg-windows) to install it if you haven't already.
+`yt-dlp` requires ffmpeg, [follow this guide](https://www.hostinger.co.uk/tutorials/how-to-install-ffmpeg) to install it if you haven't already.
 
-I would also reccommend downloading [mp3tag](https://www.mp3tag.de/en/download.html) it is really handy for editing and managing a library of `.mp3` files.
+(Not required) I would also recommend to [download mp3tag](https://www.mp3tag.de/en/download.html). It is really handy for editing and managing a library of `.mp3` files.
 
 ## Running prebuilt executable
 
@@ -41,14 +43,16 @@ py -m pip install concurrent_log_handler
 ```
 The prefix `py -m` is only required for windows systems.
 
+### Run main script
+
 Then you just need to run `main.py`.
 
-### First use
+## First use
 
 - Pick a download folder, this is the working directory for this application, it should be seperate from anything else.
 - Download any (or all) of the [supported models](#supported-ai-models) and place it in the directory `ai` folder. Its subfolder should be named `<model>-ncnn-vulkan`.
 
-### Typical use
+## Typical use
 - Add URLs to the text box in the bottom left, they are seperated with a newline (\<enter>). The URLs can be for any media and only the audio is downloaded. The URLs can be from any site [supported by yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
 - Once you've added all the URLs you want, hit the download button in the bottom right to download the files one-by-one. The program will also download the cover art for each item.
 - Cover are will be scaled to fit the selected size unless an AI model is selected, where if the image is too small, it will be upscaled first and then shrunk down.
