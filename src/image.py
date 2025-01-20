@@ -75,15 +75,15 @@ class ImageConfig(configure.Config):
         ais = [{
             "name":    "RealSR",
             "target":  "{root}\\realsr-ncnn-vulkan\\realsr-ncnn-vulkan.exe",
-            "options": "-m \"{root}\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
+            "options": "-m \"{root}\\realsr-ncnn-vulkan\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
         },{
             "name":    "Waifu2x",
             "target":  "{root}\\waifu2x-ncnn-vulkan\\waifu2x-ncnn-vulkan.exe",
-            "options": "-m \"{root}\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
+            "options": "-m \"{root}\\waifu2x-ncnn-vulkan\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
         },{
             "name":    "SRMD",
-            "target":  "{root}\\ssrmd-ncnn-vulkan\\srmd-ncnn-vulkan.exe",
-            "options": "-m \"{root}\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
+            "target":  "{root}\\srmd-ncnn-vulkan\\srmd-ncnn-vulkan.exe",
+            "options": "-m \"{root}\\srmd-ncnn-vulkan\\models-DF2K\" -i \"{input}\" -o \"{output}\" -s {scale}"
         }]
 
         self.config = {
@@ -91,7 +91,7 @@ class ImageConfig(configure.Config):
             "add_image_group":        PICK_GROUP_MOST_COMMON,
             "image_size_target":      1024,
             "interpolation":          SCALE_TYPES,
-            "interpolate_method":     1,
+            "interpolate_method":     2,
             "ai_method":              0,
             "ai_directory":           "ai",
             "ai_commands":            ais
