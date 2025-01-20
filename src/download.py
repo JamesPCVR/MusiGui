@@ -96,8 +96,15 @@ class DownloadHandler(yt_dlp.YoutubeDL, BaseHandler):
 
     def clean(self) -> None:
         """Move files to final location and remove temporary files."""
-        self.log("[download] Cleaning up", INFO)
         src_path = os.path.abspath("down")
+        if not os.path.exists(src_path):
+            self.log(
+                "[download] Cleanup failed as working directory does not exist",
+                WARNING
+            )
+            return
+
+        self.log("[download] Cleaning up", INFO)
         src_files = os.listdir(src_path)
         dest_path = self.config.get_value("output_directory")
 

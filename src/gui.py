@@ -1,4 +1,5 @@
 import sys
+import os
 import re
 import json
 import typing
@@ -129,9 +130,12 @@ class DownloadUI(QWidget):
 
         button_dir_open = QPushButton("Open")
         button_dir_open.setFixedWidth(80)
-        button_dir_open.clicked.connect(
-            lambda: show_in_file_manager(line_edit_dir_out.text())
-        )
+        def open_file_explorer():
+            _path = os.path.abspath(line_edit_dir_out.text())
+            if not os.path.exists(_path):
+                os.mkdir(_path)
+            show_in_file_manager(_path)
+        button_dir_open.clicked.connect(open_file_explorer)
         self._add_active_widget(
             button_dir_out,
             "button",
