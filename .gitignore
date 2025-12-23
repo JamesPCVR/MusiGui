@@ -1,9 +1,5 @@
 src/__pycache__
-src/config
-src/down
-src/ai
-src/*debug*
-*.spec
-compile
-build
-out
+src/debug
+src/temp
+src/bin
+.*/
