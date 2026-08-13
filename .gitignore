@@ -1,5 +1,9 @@
 src/__pycache__
 src/debug
 src/temp
+src/tmp
 src/bin
 .*/
+/notes
+/build
+debug*
